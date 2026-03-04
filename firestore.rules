@@ -1,0 +1,133 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isClientOwner(clientId) {
+      return isAuthenticated() && request.auth.uid == clientId;
+    }
+    
+    function isValidEmail(email) {
+      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+    
+    function isValidString(str, minLen, maxLen) {
+      return str is string && str.size() >= minLen && str.size() <= maxLen;
+    }
+    
+    // Admins collection - only admins can read, only system can write
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && 
+                       isValidEmail(request.resource.data.email) &&
+                       request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false; // Admins managed through admin interface only
+    }
+    
+    // Clients collection - clients can read/update their own, admins can read all
+    match /clients/{clientId} {
+      allow read: if isClientOwner(clientId) || isAdmin();
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == clientId &&
+                       isValidEmail(request.resource.data.email) &&
+                       isValidString(request.resource.data.businessName, 1, 200);
+      allow update: if isClientOwner(clientId) || isAdmin();
+      allow delete: if isAdmin();
+      
+      // Validate data structure on write
+      function isValidClientData() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['email', 'businessName']) &&
+               isValidEmail(data.email) &&
+               isValidString(data.businessName, 1, 200) &&
+               (!('budget' in data) || data.budget is string) &&
+               (!('projectStatus' in data) || data.projectStatus is string);
+      }
+      
+      allow create, update: if isValidClientData();
+    }
+    
+    // Client subcollections - reports
+    match /clients/{clientId}/reports/{reportId} {
+      allow read: if isClientOwner(clientId) || isAdmin();
+      allow create: if isAdmin() && 
+                       request.resource.data.keys().hasAll(['month', 'leads', 'adSpend']) &&
+                       request.resource.data.leads is int &&
+                       request.resource.data.adSpend is number &&
+                       request.resource.data.leads >= 0 &&
+                       request.resource.data.adSpend >= 0;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Tasks collection - clients can read their own, admins can read/write all
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create: if isAdmin() && 
+                       request.resource.data.keys().hasAll(['title', 'clientId', 'status']) &&
+                       isValidString(request.resource.data.title, 1, 500) &&
+                       request.resource.data.clientId is string &&
+                       request.resource.data.status in ['todo', 'in-progress', 'done'];
+      allow update: if isAdmin() || 
+                       (isAuthenticated() && 
+                        resource.data.clientId == request.auth.uid &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin();
+    }
+    
+    // Marketing plans collection
+    match /marketingPlans/{planId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create, update: if isAdmin() && 
+                               request.resource.data.keys().hasAll(['clientId', 'content']) &&
+                               request.resource.data.content is string;
+      allow delete: if isAdmin();
+    }
+    
+    // Weekly plans collection
+    match /weeklyPlans/{planId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create, update: if isAdmin() && 
+                               request.resource.data.keys().hasAll(['clientId', 'weeks']) &&
+                               request.resource.data.weeks is list;
+      allow delete: if isAdmin();
+    }
+    
+    // Activities collection - read own or admin, write only by system
+    match /activities/{activityId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.clientId == request.auth.uid || 
+                      resource.data.clientId == '' || 
+                      isAdmin());
+      allow create: if isAuthenticated(); // System creates activities
+      allow update, delete: if isAdmin();
+    }
+    
+    // Invoices collection
+    match /invoices/{invoiceId} {
+      allow read: if isAuthenticated() && 
+                     (resource.data.clientId == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+
