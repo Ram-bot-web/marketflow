@@ -3,7 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -18,46 +17,69 @@ service cloud.firestore {
     }
     
     function isValidEmail(email) {
-      return email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+      return email is string &&
+             email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
     
     function isValidString(str, minLen, maxLen) {
       return str is string && str.size() >= minLen && str.size() <= maxLen;
     }
-    
-    // Admins collection - only admins can read, only system can write
-    match /admins/{adminId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin() && 
-                       isValidEmail(request.resource.data.email) &&
-                       request.resource.data.email == request.auth.token.email;
-      allow update, delete: if false; // Admins managed through admin interface only
+
+    // Core fields every clients/{id} document must keep
+    function clientRequiredFields() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['email', 'businessName']) &&
+             isValidEmail(d.email) &&
+             isValidString(d.businessName, 1, 200);
     }
     
-    // Clients collection - clients can read/update their own, admins can read all
+    // Admins: doc id is often auto-id OR {auth.uid} for your own row.
+    // Read must work for login (query by email) before admins/{uid} exists — so allow
+    // read of a row whose email matches the signed-in user, OR full access if admins/{uid} exists.
+    match /admins/{adminId} {
+      allow read: if isAuthenticated() && (
+        (resource.data.keys().hasAll(['email']) && resource.data.email == request.auth.token.email) ||
+        isAdmin()
+      );
+
+      // First admin: setDoc(admins, own uid). Further admins: addDoc by existing admin.
+      allow create: if isAuthenticated() && (
+        (
+          request.auth.uid == adminId &&
+          !exists(/databases/$(database)/documents/admins/$(adminId)) &&
+          isValidEmail(request.resource.data.email) &&
+          request.resource.data.email == request.auth.token.email &&
+          request.resource.data.keys().hasAll(['name'])
+        ) ||
+        (
+          isAdmin() &&
+          isValidEmail(request.resource.data.email) &&
+          request.resource.data.keys().hasAll(['name'])
+        )
+      );
+
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == adminId && isValidEmail(request.resource.data.email)) ||
+        isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+    
+    // clients — self-signup creates clients/{auth.uid}
     match /clients/{clientId} {
       allow read: if isClientOwner(clientId) || isAdmin();
-      allow create: if isAuthenticated() && 
+
+      allow create: if isAuthenticated() &&
                        request.auth.uid == clientId &&
-                       isValidEmail(request.resource.data.email) &&
-                       isValidString(request.resource.data.businessName, 1, 200);
-      allow update: if isClientOwner(clientId) || isAdmin();
+                       clientRequiredFields();
+
+      allow update: if (isClientOwner(clientId) || isAdmin()) &&
+                       clientRequiredFields();
+
       allow delete: if isAdmin();
-      
-      // Validate data structure on write
-      function isValidClientData() {
-        let data = request.resource.data;
-        return data.keys().hasAll(['email', 'businessName']) &&
-               isValidEmail(data.email) &&
-               isValidString(data.businessName, 1, 200) &&
-               (!('budget' in data) || data.budget is string) &&
-               (!('projectStatus' in data) || data.projectStatus is string);
-      }
-      
-      allow create, update: if isValidClientData();
     }
     
-    // Client subcollections - reports
     match /clients/{clientId}/reports/{reportId} {
       allow read: if isClientOwner(clientId) || isAdmin();
       allow create: if isAdmin() && 
@@ -69,7 +91,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     
-    // Tasks collection - clients can read their own, admins can read/write all
     match /tasks/{taskId} {
       allow read: if isAuthenticated() && 
                      (resource.data.clientId == request.auth.uid || isAdmin());
@@ -81,11 +102,10 @@ service cloud.firestore {
       allow update: if isAdmin() || 
                        (isAuthenticated() && 
                         resource.data.clientId == request.auth.uid &&
-                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow delete: if isAdmin();
     }
     
-    // Marketing plans collection
     match /marketingPlans/{planId} {
       allow read: if isAuthenticated() && 
                      (resource.data.clientId == request.auth.uid || isAdmin());
@@ -95,7 +115,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // Weekly plans collection
     match /weeklyPlans/{planId} {
       allow read: if isAuthenticated() && 
                      (resource.data.clientId == request.auth.uid || isAdmin());
@@ -105,29 +124,33 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // Activities collection - read own or admin, write only by system
     match /activities/{activityId} {
       allow read: if isAuthenticated() && 
                      (resource.data.clientId == request.auth.uid || 
                       resource.data.clientId == '' || 
                       isAdmin());
-      allow create: if isAuthenticated(); // System creates activities
+      allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
     
-    // Invoices collection
     match /invoices/{invoiceId} {
       allow read: if isAuthenticated() && 
                      (resource.data.clientId == request.auth.uid || isAdmin());
       allow create, update, delete: if isAdmin();
     }
+
+    // Optional profile mirror at users/{uid} (admin UI / display name)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if isAuthenticated() &&
+                               request.auth.uid == userId &&
+                               request.resource.data.keys().hasAll(['email']) &&
+                               isValidEmail(request.resource.data.email);
+      allow delete: if false;
+    }
     
-    // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
-
-

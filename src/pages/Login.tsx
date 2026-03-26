@@ -10,7 +10,7 @@ import { Zap, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { validateEmail, sanitizeString } from '@/lib/validation';
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS, formatResetTime } from '@/lib/rateLimiter';
 import { R } from '@/lib/routes';
@@ -61,6 +61,18 @@ export default function Login() {
       );
       const adminSnap = await getDocs(adminQ);
       if (!adminSnap.empty) {
+        // Ensure admins/{uid} exists so Firestore isAdmin() rules work (legacy rows used random ids).
+        const row = adminSnap.docs[0].data() as { name?: string; addedAt?: unknown; addedBy?: string };
+        await setDoc(
+          doc(db, "admins", user.uid),
+          {
+            email: user.email?.toLowerCase() ?? "",
+            name: row.name || user.displayName || "",
+            addedAt: row.addedAt ?? serverTimestamp(),
+            addedBy: row.addedBy ?? "migrated-login",
+          },
+          { merge: true }
+        );
         navigate(R.ADMIN);
         return;
       }

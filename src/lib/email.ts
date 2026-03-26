@@ -52,6 +52,15 @@ const EMAIL_CONFIG = {
   smtpPassword: import.meta.env.VITE_SMTP_PASSWORD || '',
 };
 
+const isBrowser = typeof window !== 'undefined';
+
+/** SendGrid/Mailgun block browser CORS; SMTP expects a same-origin /api. Avoid red "failed" network calls in the SPA. */
+function mustFallbackEmailToConsole(provider: EmailProvider): boolean {
+  if (!isBrowser || provider === 'console') return false;
+  if (import.meta.env.VITE_ALLOW_BROWSER_EMAIL === 'true') return false;
+  return provider === 'sendgrid' || provider === 'mailgun' || provider === 'smtp';
+}
+
 // ── Email Templates ──────────────────────────────────────────────────────────
 
 const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
@@ -329,6 +338,15 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
+    if (mustFallbackEmailToConsole(EMAIL_CONFIG.provider)) {
+      console.warn(
+        `[email] Provider "${EMAIL_CONFIG.provider}" is not usable from the browser (CORS or missing backend). ` +
+          'Logging only. Set VITE_EMAIL_PROVIDER=console, or send mail from a Cloud Function / server. ' +
+          '(Optional unsafe override: VITE_ALLOW_BROWSER_EMAIL=true)'
+      );
+      return sendViaConsole(options);
+    }
+
     switch (EMAIL_CONFIG.provider) {
       case 'sendgrid':
         return await sendViaSendGrid(options);
@@ -418,19 +436,9 @@ async function sendViaMailgun(options: EmailOptions): Promise<boolean> {
  * Send email using SMTP (requires backend)
  */
 async function sendViaSMTP(options: EmailOptions): Promise<boolean> {
-  // SMTP requires a backend service
-  // This would typically call a Cloud Function or API endpoint
-  try {
-    const response = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(options),
-    });
-    return response.ok;
-  } catch (error) {
-    console.error('SMTP error:', error);
-    return false;
-  }
+  // No Vite dev server route for /api/send-email — avoid guaranteed failed fetch in Network tab.
+  console.warn('[email] SMTP needs a real backend (e.g. Cloud Function). Use VITE_EMAIL_PROVIDER=console in .env.');
+  return sendViaConsole(options);
 }
 
 /**

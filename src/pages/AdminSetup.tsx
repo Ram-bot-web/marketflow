@@ -9,8 +9,9 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import {
   collection,
+  doc,
   getDocs,
-  addDoc,
+  setDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { R } from "@/lib/routes";
@@ -35,8 +36,11 @@ export default function AdminSetup() {
       try {
         const snap = await getDocs(collection(db, "admins"));
         if (!snap.empty) setAlreadySetup(true);
-      } catch {
-        // allow setup if check fails
+      } catch (e: unknown) {
+        const code = e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "";
+        if (code === "permission-denied") {
+          setAlreadySetup(true);
+        }
       } finally {
         setChecking(false);
       }
@@ -65,7 +69,7 @@ export default function AdminSetup() {
       );
       await updateProfile(user, { displayName: formData.name });
 
-      await addDoc(collection(db, "admins"), {
+      await setDoc(doc(db, "admins", user.uid), {
         email: formData.email.toLowerCase(),
         name: formData.name,
         addedAt: serverTimestamp(),

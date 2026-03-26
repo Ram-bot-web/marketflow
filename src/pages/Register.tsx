@@ -11,10 +11,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // 🔥 Firebase
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase';
 import { logActivity } from '@/lib/activityLogger';
-import { validateEmail, validatePassword, validateBusinessName, sanitizeString } from '@/lib/validation';
+import { validateEmail, validatePassword, validateBusinessName, validateString, sanitizeString } from '@/lib/validation';
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS, formatResetTime } from '@/lib/rateLimiter';
 import { R } from '@/lib/routes';
 
@@ -38,6 +38,16 @@ export default function Register() {
   e.preventDefault();
   setError('');
   setValidationErrors({});
+
+  const fullNameValidation = validateString(formData.fullName, {
+    required: true,
+    minLength: 2,
+    maxLength: 100,
+  });
+  if (!fullNameValidation.isValid) {
+    setValidationErrors((prev) => ({ ...prev, fullName: fullNameValidation.error || '' }));
+    return;
+  }
 
   // Validate inputs
   const emailValidation = validateEmail(formData.email);
@@ -91,13 +101,39 @@ export default function Register() {
       displayName: sanitizedFullName,
     });
 
-    // 3️⃣ Save extra user data in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      fullName: sanitizedFullName,
-      email: sanitizedEmail,
-      businessName: sanitizedBusinessName,
-      createdAt: new Date(),
-    });
+    // 3️⃣ Client record (rest of the app reads `clients/{uid}`, not `users`)
+    await setDoc(
+      doc(db, "clients", user.uid),
+      {
+        uid: user.uid,
+        email: sanitizedEmail,
+        name: sanitizedFullName,
+        businessName: sanitizedBusinessName,
+        onboardingCompleted: false,
+        status: "onboarding",
+        projectStatus: "Strategy",
+        budget: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // Optional profile doc for admin UI fallbacks (ignore if rules disallow)
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          fullName: sanitizedFullName,
+          email: sanitizedEmail,
+          businessName: sanitizedBusinessName,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (userDocErr) {
+      console.warn("users/{uid} doc not written (optional):", userDocErr);
+    }
 
     // Log activity
     await logActivity({
@@ -114,14 +150,20 @@ export default function Register() {
     navigate(R.ONBOARDING);
 
   } catch (error: any) {
-    console.error("Registration Error:", error.message);
-    
+    console.error("Registration Error:", error.code || error.message, error);
+
     if (error.code === "auth/email-already-in-use") {
       setError("This email is already registered. Please use a different email or try logging in.");
     } else if (error.code === "auth/weak-password") {
       setError("Password is too weak. Please use a stronger password.");
     } else if (error.code === "auth/invalid-email") {
       setError("Invalid email address. Please check and try again.");
+    } else if (error.code === "auth/operation-not-allowed") {
+      setError("Email/password sign-up is disabled in Firebase. Enable it in Authentication → Sign-in method.");
+    } else if (error.code === "auth/network-request-failed") {
+      setError("Network error. Check your connection and try again.");
+    } else if (error.code === "permission-denied") {
+      setError("Could not save your profile (Firestore permission denied). Ask the admin to update security rules for clients/{userId}.");
     } else {
       setError(error.message || "Registration failed. Please try again.");
     }
@@ -260,6 +302,12 @@ export default function Register() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              {validationErrors.password && (
+                <p className="text-sm text-destructive mt-1">{validationErrors.password}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1.5">
+                At least 8 characters with uppercase, lowercase, number, and special character (!@#$…).
+              </p>
             </div>
 
             <div>
@@ -267,9 +315,21 @@ export default function Register() {
               <Input
                 id="businessName"
                 value={formData.businessName}
-                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, businessName: e.target.value });
+                  if (validationErrors.businessName) {
+                    setValidationErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.businessName;
+                      return next;
+                    });
+                  }
+                }}
                 required
               />
+              {validationErrors.businessName && (
+                <p className="text-sm text-destructive mt-1">{validationErrors.businessName}</p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>

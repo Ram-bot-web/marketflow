@@ -163,7 +163,11 @@ export default function AdminClientDetail() {
         setClientData(data);
         setStatus(getDisplayStatus(data));
 
-        const name = userSnap.data()?.fullName || data.email || 'Unknown Client';
+        const name =
+          (data as { name?: string }).name ||
+          userSnap.data()?.fullName ||
+          data.email ||
+          'Unknown Client';
         setDisplayName(name);
       } catch (err) {
         console.error('Fetch error:', err);
