@@ -3,6 +3,8 @@ import { R } from '@/lib/routes';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PublicNavbar } from '@/components/layout/PublicNavbar';
+import { usePageSeo } from '@/hooks/use-page-seo';
+import { HOME_DESCRIPTION, HOME_TITLE } from '@/lib/seo';
 import { 
   BarChart3, 
   Target, 
@@ -16,33 +18,37 @@ import {
 const features = [
   {
     icon: Target,
-    title: 'Strategic Planning',
-    description: 'Get a customized marketing strategy tailored to your business goals and target audience.',
+    title: 'Marketing strategy & planning',
+    description:
+      'Align on goals, audiences, and channels with a clear marketing roadmap your team can execute and you can track in one client portal.',
   },
   {
     icon: BarChart3,
-    title: 'Real-time Analytics',
-    description: 'Track your campaign performance with detailed insights and actionable metrics.',
+    title: 'Campaign analytics & ROI',
+    description:
+      'Monitor leads, cost per lead (CPL), ad spend, and channel performance with dashboards built for marketing accountability.',
   },
   {
     icon: TrendingUp,
-    title: 'Growth Focused',
-    description: 'Scale your marketing efforts with data-driven optimizations and proven strategies.',
+    title: 'Performance reporting',
+    description:
+      'Turn campaign data into monthly reports and comparisons so you see what is working and where to reallocate budget.',
   },
   {
     icon: Users,
-    title: 'Dedicated Support',
-    description: 'Work with marketing experts who understand your industry and business needs.',
+    title: 'Agency & client collaboration',
+    description:
+      'Share plans, tasks, invoices, and activity in one place—fewer emails, faster decisions, transparent marketing operations.',
   },
 ];
 
 const benefits = [
-  'Custom marketing strategies',
-  'Monthly performance reports',
-  'Multi-platform campaigns',
-  'Asset management portal',
-  'Direct communication channel',
-  'Budget optimization',
+  'Digital marketing dashboard for clients',
+  'Lead and conversion visibility',
+  'Ad spend and budget tracking',
+  'Marketing plan and weekly execution view',
+  'Invoices and billing transparency',
+  'Tasks, calendar, and notifications',
 ];
 
 // Animated Background Component
@@ -174,15 +180,18 @@ const AnimatedBackground = () => {
 };
 
 const Index = () => {
+  usePageSeo({ title: HOME_TITLE, description: HOME_DESCRIPTION });
+
   return (
     <div className="min-h-screen bg-background relative">
       <AnimatedBackground />
-      
+
       <div className="relative z-10">
         <PublicNavbar />
-        
+
+        <main id="main-content">
         {/* Hero Section */}
-        <section className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 px-4">
+        <section className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 md:pb-20 px-4" aria-labelledby="hero-heading">
           <div className="container mx-auto max-w-6xl">
             <motion.div
               className="text-center"
@@ -192,19 +201,27 @@ const Index = () => {
             >
               <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium mb-4 sm:mb-6">
                 <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                Marketing Made Simple
+                Client marketing platform
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-                Grow Your Business with{' '}
+              <h1 id="hero-heading" className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
+                Grow your business with{' '}
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-400">
                   MarketFlow
                 </span>
+                <span className="sr-only">
+                  — client marketing dashboard, campaign analytics, and ROI reporting
+                </span>
               </h1>
 
-              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
-                The all-in-one marketing dashboard that helps you plan, execute, and measure your
-                marketing campaigns with clarity and confidence.
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-4 sm:mb-6 px-2">
+                The client marketing dashboard for planning campaigns, tracking leads and ad spend,
+                measuring marketing ROI, and staying aligned with your agency—reports, invoices, and
+                tasks in one place.
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground/80 max-w-3xl mx-auto mb-8 sm:mb-10 px-2">
+                Built for businesses that want transparent digital marketing analytics, monthly
+                performance reporting, and a single portal for strategy through execution.
               </p>
               
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
@@ -243,7 +260,7 @@ const Index = () => {
         </section>
 
         {/* Features Section */}
-        <section className="py-12 sm:py-16 md:py-20 px-4 bg-card/50 backdrop-blur-sm">
+        <section className="py-12 sm:py-16 md:py-20 px-4 bg-card/50 backdrop-blur-sm" aria-labelledby="features-heading">
           <div className="container mx-auto max-w-6xl">
             <motion.div
               className="text-center mb-10 sm:mb-12 md:mb-16"
@@ -252,11 +269,12 @@ const Index = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
-                Everything You Need to Succeed
+              <h2 id="features-heading" className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
+                Everything you need for accountable marketing
               </h2>
               <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-2">
-                Powerful tools and insights to take your marketing to the next level
+                From marketing strategy to multi-channel campaign reporting—tools your business uses
+                every week to improve results.
               </p>
             </motion.div>
 
@@ -282,7 +300,7 @@ const Index = () => {
         </section>
 
         {/* Benefits Section */}
-        <section className="py-20 px-4">
+        <section className="py-20 px-4" aria-labelledby="benefits-heading">
           <div className="container mx-auto max-w-6xl">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               <motion.div
@@ -291,12 +309,13 @@ const Index = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
               >
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
-                  Why Choose MarketFlow?
+                <h2 id="benefits-heading" className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+                  Why businesses choose MarketFlow
                 </h2>
                 <p className="text-lg text-muted-foreground mb-8">
-                  We combine expert marketing strategies with powerful technology to deliver 
-                  measurable results for your business.
+                  A dedicated client marketing portal so you see plans, performance, and spend in
+                  context—ideal for SMBs and teams working with marketing agencies or in-house
+                  specialists.
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {benefits.map((benefit, index) => (
@@ -337,20 +356,21 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 px-4">
+        <section className="py-20 px-4" aria-labelledby="cta-heading">
           <div className="container mx-auto max-w-4xl">
-            <motion.div 
+            <motion.div
               className="rounded-2xl gradient-hero p-8 md:p-12 text-center"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h2 className="text-2xl md:text-4xl font-bold text-primary-foreground mb-4">
-                Ready to Transform Your Marketing?
+              <h2 id="cta-heading" className="text-2xl md:text-4xl font-bold text-primary-foreground mb-4">
+                Ready for a clearer marketing operation?
               </h2>
               <p className="text-primary-foreground/80 text-lg mb-8 max-w-2xl mx-auto">
-                Join hundreds of businesses already using MarketFlow to grow their brand and reach new customers.
+                Get started with MarketFlow—your hub for campaign analytics, client reporting, and
+                marketing execution.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button 
@@ -373,6 +393,7 @@ const Index = () => {
             </motion.div>
           </div>
         </section>
+        </main>
 
         {/* Footer */}
         <footer className="py-8 px-4 border-t border-border backdrop-blur-sm bg-card/30">
@@ -384,8 +405,8 @@ const Index = () => {
                 </div>
                 <span className="font-semibold text-foreground">MarketFlow</span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                © 2024 MarketFlow. All rights reserved.
+              <p className="text-sm text-muted-foreground text-center md:text-right max-w-md">
+                © {new Date().getFullYear()} MarketFlow. Client marketing dashboard &amp; analytics.
               </p>
             </div>
           </div>

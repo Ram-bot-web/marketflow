@@ -11,9 +11,9 @@ import {
   User, Mail, Building, Phone, Lock, Bell, Download, CreditCard, Shield, Target
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 

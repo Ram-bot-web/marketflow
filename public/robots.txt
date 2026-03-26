@@ -1,3 +1,6 @@
+# Update the sitemap URL to match your production domain (see VITE_PUBLIC_SITE_URL in .env)
+Sitemap: https://app.marketflow.com/sitemap.xml
+
 User-agent: Googlebot
 Allow: /
 

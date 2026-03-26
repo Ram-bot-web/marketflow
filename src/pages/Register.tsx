@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { usePageSeo } from '@/hooks/use-page-seo';
+import { REGISTER_DESCRIPTION, REGISTER_TITLE } from '@/lib/seo';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +19,7 @@ import { checkRateLimit, getRateLimitKey, RATE_LIMITS, formatResetTime } from '@
 import { R } from '@/lib/routes';
 
 export default function Register() {
+  usePageSeo({ title: REGISTER_TITLE, description: REGISTER_DESCRIPTION });
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -147,7 +150,7 @@ export default function Register() {
         </motion.div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+      <div id="main-content" className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8" role="main">
         <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}

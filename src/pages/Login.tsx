@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { usePageSeo } from '@/hooks/use-page-seo';
+import { LOGIN_DESCRIPTION, LOGIN_TITLE } from '@/lib/seo';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +17,7 @@ import { R } from '@/lib/routes';
 
 
 export default function Login() {
+  usePageSeo({ title: LOGIN_TITLE, description: LOGIN_DESCRIPTION });
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -90,7 +93,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8">
+      <div id="main-content" className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8" role="main">
         <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}

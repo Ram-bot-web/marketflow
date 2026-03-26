@@ -1,73 +1,44 @@
-# Welcome to your Lovable project
+# MarketFlow
 
-## Project info
+Client marketing dashboard: plans, campaign analytics, invoices, tasks, and collaboration in one place.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- [Vite](https://vitejs.dev/) + TypeScript + React
+- [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- [Firebase](https://firebase.google.com/) (Auth, Firestore)
 
-There are several ways of editing your application.
+## Setup
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires [Node.js](https://nodejs.org/) (LTS recommended).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+git clone <YOUR_REPO_URL>
+cd marketflow
+npm install
+cp .env.example .env
+# Fill in Firebase and optional email / public URL values
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Dev server runs at `http://localhost:8080` (see `vite.config.ts`).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Scripts
 
-**Use GitHub Codespaces**
+| Command        | Description              |
+|----------------|--------------------------|
+| `npm run dev`  | Development server       |
+| `npm run build`| Production build → `dist`|
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint                   |
+| `npm run test` | Vitest                   |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Deploy
 
-## What technologies are used for this project?
+Build with `npm run build`, then host the `dist` folder (e.g. Firebase Hosting, Vercel, Netlify). Use SPA fallback so client routes resolve to `index.html`.
 
-This project is built with:
+After deploy, set `VITE_APP_URL` and `VITE_PUBLIC_SITE_URL` to your live domain, rebuild, and update `index.html` / `public/sitemap.xml` / `public/robots.txt` if your canonical domain is not `https://app.marketflow.com`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Docs
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+See `APPLICATION_WORKFLOW.md` for routes and product flows.

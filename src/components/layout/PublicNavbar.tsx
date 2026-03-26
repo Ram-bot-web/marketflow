@@ -14,7 +14,13 @@ export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50" aria-label="Primary">
+      <a
+        href="#main-content"
+        className="absolute left-[-9999px] top-4 z-[100] px-4 py-2 rounded-md bg-primary text-primary-foreground outline-none ring-2 ring-ring focus:left-4 focus:translate-x-0"
+      >
+        Skip to main content
+      </a>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to={R.HOME} className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg gradient-hero flex items-center justify-center">

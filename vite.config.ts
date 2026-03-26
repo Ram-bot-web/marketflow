@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -12,12 +11,13 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : undefined,
   build: {
     // Optimize bundle size
     rollupOptions: {
@@ -33,14 +33,6 @@ export default defineConfig(({ mode }) => ({
     },
     // Chunk size warnings
     chunkSizeWarningLimit: 1000,
-    // Minify
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: mode === 'production',
-        drop_debugger: mode === 'production',
-      },
-    },
     // Source maps for production debugging (optional)
     sourcemap: mode === 'development',
   },
