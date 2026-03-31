@@ -27,7 +27,6 @@ export default defineConfig(({ mode }) => ({
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
           'ui-vendor': ['framer-motion', 'recharts'],
-          'utils-vendor': ['@tanstack/react-query'],
         },
       },
     },

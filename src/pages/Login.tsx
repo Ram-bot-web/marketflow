@@ -54,14 +54,18 @@ export default function Login() {
     try {
       const { user } = await signInWithEmailAndPassword(auth, sanitizedEmail, formData.password);
 
-      // Check if this user is an admin
+      const adminByUid = await getDoc(doc(db, "admins", user.uid));
+      if (adminByUid.exists()) {
+        navigate(R.ADMIN);
+        return;
+      }
+
       const adminQ = query(
         collection(db, "admins"),
         where("email", "==", user.email?.toLowerCase())
       );
       const adminSnap = await getDocs(adminQ);
       if (!adminSnap.empty) {
-        // Ensure admins/{uid} exists so Firestore isAdmin() rules work (legacy rows used random ids).
         const row = adminSnap.docs[0].data() as { name?: string; addedAt?: unknown; addedBy?: string };
         await setDoc(
           doc(db, "admins", user.uid),

@@ -2,40 +2,104 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isAdmin() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
-    
+
     function isClientOwner(clientId) {
       return isAuthenticated() && request.auth.uid == clientId;
     }
-    
+
     function isValidEmail(email) {
       return email is string &&
              email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
-    
+
     function isValidString(str, minLen, maxLen) {
       return str is string && str.size() >= minLen && str.size() <= maxLen;
     }
 
-    // Core fields every clients/{id} document must keep
     function clientRequiredFields() {
       let d = request.resource.data;
       return d.keys().hasAll(['email', 'businessName']) &&
              isValidEmail(d.email) &&
              isValidString(d.businessName, 1, 200);
     }
-    
-    // Admins: doc id is often auto-id OR {auth.uid} for your own row.
-    // Read must work for login (query by email) before admins/{uid} exists — so allow
-    // read of a row whose email matches the signed-in user, OR full access if admins/{uid} exists.
+
+    function clientOnboardingComplete() {
+      return resource.data.keys().hasAll(['onboardingCompleted']) &&
+             resource.data.onboardingCompleted == true;
+    }
+
+    function clientGoalsOk() {
+      return !('goals' in request.resource.data) || request.resource.data.goals is list;
+    }
+
+    function clientNotificationTypesOk() {
+      return !('emailNotificationTypes' in request.resource.data) ||
+             request.resource.data.emailNotificationTypes is list;
+    }
+
+    // Initial signup (Register) — fixed shape; blocks stuffing admin-only fields.
+    function clientCreateKeyAllowlist() {
+      return request.resource.data.keys().hasOnly([
+        'uid', 'email', 'name', 'businessName', 'onboardingCompleted', 'status',
+        'projectStatus', 'budget', 'createdAt', 'updatedAt'
+      ]);
+    }
+
+    // Before onboarding is finished — profile + onboarding merge fields only.
+    function clientPreOnboardingPatchKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'uid', 'email', 'name', 'businessName', 'onboardingCompleted', 'status',
+        'projectStatus', 'budget', 'createdAt', 'updatedAt', 'website', 'industry',
+        'description', 'goals', 'audienceAge', 'audienceLocation', 'audienceInterests',
+        'currentMarketing', 'competitors', 'phone', 'monthlyGoalLeads', 'monthlyGoalSpend',
+        'emailNotificationsEnabled', 'emailNotificationTypes'
+      ]);
+    }
+
+    // After onboarding — profile / goals / notifications only.
+    function clientPostOnboardingPatchKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'name', 'businessName', 'phone', 'monthlyGoalLeads', 'monthlyGoalSpend',
+        'emailNotificationsEnabled', 'emailNotificationTypes', 'updatedAt'
+      ]);
+    }
+
+    function clientSelfUpdateAllowed() {
+      return clientGoalsOk() && clientNotificationTypesOk() &&
+             request.resource.data.uid == resource.data.uid &&
+             request.resource.data.email == resource.data.email && (
+        (!clientOnboardingComplete() && clientPreOnboardingPatchKeys()) ||
+        (clientOnboardingComplete() &&
+         clientPostOnboardingPatchKeys() &&
+         request.resource.data.status == resource.data.status &&
+         request.resource.data.projectStatus == resource.data.projectStatus &&
+         request.resource.data.onboardingCompleted == resource.data.onboardingCompleted)
+      );
+    }
+
+    function activityTypeOk() {
+      return request.resource.data.type in [
+        'registration', 'report', 'status_change', 'task_created', 'task_completed',
+        'asset_uploaded', 'asset_approved', 'asset_rejected', 'invoice_created',
+        'invoice_paid', 'plan_created', 'plan_updated', 'onboarding_completed'
+      ];
+    }
+
+    function activityClientRefOk() {
+      let cid = request.resource.data.clientId;
+      return (cid == request.auth.uid) ||
+             (isAdmin() && (cid == '' || exists(/databases/$(database)/documents/clients/$(cid))));
+    }
+
     match /admins/{adminId} {
       allow read: if isAuthenticated() && (
         (resource.data.keys().hasAll(['email']) && resource.data.email == request.auth.token.email) ||
@@ -43,6 +107,7 @@ service cloud.firestore {
       );
 
       // First admin: setDoc(admins, own uid). Further admins: addDoc by existing admin.
+      // (Stricter option without self-create: deploy Cloud Functions on Blaze — see functions/.)
       allow create: if isAuthenticated() && (
         (
           request.auth.uid == adminId &&
@@ -65,24 +130,27 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
     }
-    
-    // clients — self-signup creates clients/{auth.uid}
+
     match /clients/{clientId} {
       allow read: if isClientOwner(clientId) || isAdmin();
 
       allow create: if isAuthenticated() &&
                        request.auth.uid == clientId &&
-                       clientRequiredFields();
+                       clientRequiredFields() &&
+                       clientCreateKeyAllowlist();
 
-      allow update: if (isClientOwner(clientId) || isAdmin()) &&
-                       clientRequiredFields();
+      allow update: if isAdmin() && clientRequiredFields();
+
+      allow update: if isClientOwner(clientId) &&
+                       clientRequiredFields() &&
+                       clientSelfUpdateAllowed();
 
       allow delete: if isAdmin();
     }
-    
+
     match /clients/{clientId}/reports/{reportId} {
       allow read: if isClientOwner(clientId) || isAdmin();
-      allow create: if isAdmin() && 
+      allow create: if isAdmin() &&
                        request.resource.data.keys().hasAll(['month', 'leads', 'adSpend']) &&
                        request.resource.data.leads is int &&
                        request.resource.data.adSpend is number &&
@@ -90,56 +158,76 @@ service cloud.firestore {
                        request.resource.data.adSpend >= 0;
       allow update, delete: if isAdmin();
     }
-    
+
+    match /clients/{clientId}/notes/{noteId} {
+      allow read: if isClientOwner(clientId) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /tasks/{taskId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
                      (resource.data.clientId == request.auth.uid || isAdmin());
-      allow create: if isAdmin() && 
+      allow create: if isAdmin() &&
                        request.resource.data.keys().hasAll(['title', 'clientId', 'status']) &&
                        isValidString(request.resource.data.title, 1, 500) &&
                        request.resource.data.clientId is string &&
                        request.resource.data.status in ['todo', 'in-progress', 'done'];
-      allow update: if isAdmin() || 
-                       (isAuthenticated() && 
+      allow update: if isAdmin() ||
+                       (isAuthenticated() &&
                         resource.data.clientId == request.auth.uid &&
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow delete: if isAdmin();
     }
-    
+
     match /marketingPlans/{planId} {
-      allow read: if isAuthenticated() && 
-                     (resource.data.clientId == request.auth.uid || isAdmin());
-      allow create, update: if isAdmin() && 
-                               request.resource.data.keys().hasAll(['clientId', 'content']) &&
-                               request.resource.data.content is string;
+      allow read: if isAuthenticated() &&
+                     (resource.data.clientId == request.auth.uid ||
+                      (request.auth.token.email != null &&
+                       resource.data.clientId == request.auth.token.email) ||
+                      isAdmin());
+      allow create: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['clientId', 'plan', 'createdAt', 'updatedAt']) &&
+                       request.resource.data.clientId is string &&
+                       request.resource.data.plan is map;
+      allow update: if isAdmin() &&
+                       request.resource.data.keys().hasAll(['clientId', 'plan']) &&
+                       request.resource.data.clientId is string &&
+                       request.resource.data.plan is map;
       allow delete: if isAdmin();
     }
-    
+
     match /weeklyPlans/{planId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
                      (resource.data.clientId == request.auth.uid || isAdmin());
-      allow create, update: if isAdmin() && 
+      allow create, update: if isAdmin() &&
                                request.resource.data.keys().hasAll(['clientId', 'weeks']) &&
                                request.resource.data.weeks is list;
       allow delete: if isAdmin();
     }
-    
+
     match /activities/{activityId} {
-      allow read: if isAuthenticated() && 
-                     (resource.data.clientId == request.auth.uid || 
-                      resource.data.clientId == '' || 
+      allow read: if isAuthenticated() &&
+                     (resource.data.clientId == request.auth.uid ||
+                      resource.data.clientId == '' ||
                       isAdmin());
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+                       request.resource.data.keys().hasAll(['type', 'title', 'subtitle', 'clientId', 'ts', 'createdAt']) &&
+                       activityTypeOk() &&
+                       isValidString(request.resource.data.title, 1, 500) &&
+                       isValidString(request.resource.data.subtitle, 0, 500) &&
+                       request.resource.data.ts is int &&
+                       request.resource.data.clientId is string &&
+                       (!('metadata' in request.resource.data) || request.resource.data.metadata is map) &&
+                       activityClientRefOk();
       allow update, delete: if isAdmin();
     }
-    
+
     match /invoices/{invoiceId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
                      (resource.data.clientId == request.auth.uid || isAdmin());
       allow create, update, delete: if isAdmin();
     }
 
-    // Optional profile mirror at users/{uid} (admin UI / display name)
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow create, update: if isAuthenticated() &&
@@ -148,7 +236,7 @@ service cloud.firestore {
                                isValidEmail(request.resource.data.email);
       allow delete: if false;
     }
-    
+
     match /{document=**} {
       allow read, write: if false;
     }

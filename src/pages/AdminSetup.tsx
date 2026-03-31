@@ -30,7 +30,6 @@ export default function AdminSetup() {
     confirmPassword: "",
   });
 
-  // Check if any admins already exist — if so, block this page
   useEffect(() => {
     (async () => {
       try {
