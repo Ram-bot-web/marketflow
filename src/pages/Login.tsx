@@ -54,23 +54,24 @@ export default function Login() {
     try {
       const { user } = await signInWithEmailAndPassword(auth, sanitizedEmail, formData.password);
 
-      const adminByUid = await getDoc(doc(db, "admins", user.uid));
-      if (adminByUid.exists()) {
-        navigate(R.ADMIN);
-        return;
-      }
+      // Use the same normalized email as sign-in (must match Firestore `admins.email` + token for rules).
+      const emailForQueries = (user.email ?? sanitizedEmail).toLowerCase().trim();
 
-      const adminQ = query(
-        collection(db, "admins"),
-        where("email", "==", user.email?.toLowerCase())
-      );
+      // Do NOT getDoc(admins/{uid}) when missing — old rules often deny that and block all logins.
+      // Query by email only returns rows the user is allowed to read; empty result = normal client.
+      const adminQ = query(collection(db, "admins"), where("email", "==", emailForQueries));
       const adminSnap = await getDocs(adminQ);
       if (!adminSnap.empty) {
+        const alreadyAtUid = adminSnap.docs.some((d) => d.id === user.uid);
+        if (alreadyAtUid) {
+          navigate(R.ADMIN);
+          return;
+        }
         const row = adminSnap.docs[0].data() as { name?: string; addedAt?: unknown; addedBy?: string };
         await setDoc(
           doc(db, "admins", user.uid),
           {
-            email: user.email?.toLowerCase() ?? "",
+            email: emailForQueries,
             name: row.name || user.displayName || "",
             addedAt: row.addedAt ?? serverTimestamp(),
             addedBy: row.addedBy ?? "migrated-login",
@@ -87,16 +88,21 @@ export default function Login() {
       navigate(onboardingCompleted ? R.DASHBOARD : R.ONBOARDING);
 
     } catch (err: any) {
-      console.error("Login Error:", err.message);
+      const code = err?.code ?? "";
+      console.error("Login Error:", code, err?.message);
 
-      if (err.code === "auth/user-not-found") {
+      if (code === "auth/user-not-found") {
         setError("No account found with this email.");
-      } else if (err.code === "auth/wrong-password") {
+      } else if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
         setError("Incorrect password.");
-      } else if (err.code === "auth/invalid-email") {
+      } else if (code === "auth/invalid-email") {
         setError("Invalid email address.");
-      } else if (err.code === "auth/too-many-requests") {
+      } else if (code === "auth/too-many-requests") {
         setError("Too many failed login attempts. Please try again later.");
+      } else if (code === "permission-denied") {
+        setError(
+          "Signed in, but Firestore denied access (rules). In Firebase Console → Firestore → Rules, publish the rules from this repo’s firestore.rules, or run: npm run firebase:deploy:rules"
+        );
       } else {
         setError("Login failed. Please try again.");
       }

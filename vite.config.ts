@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // Prefer a single resolved instance of the Firebase entrypoints (helps avoid duplicate Firestore clients).
+    dedupe: ["firebase", "firebase/app", "firebase/auth", "firebase/firestore"],
   },
   esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : undefined,
   build: {

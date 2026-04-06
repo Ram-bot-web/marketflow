@@ -1,6 +1,12 @@
-import { initializeApp, type FirebaseOptions } from "firebase/app";
+import { initializeApp, getApps, getApp, type FirebaseOptions } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, initializeFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  type Firestore,
+  type FirestoreSettings,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 /** Default project (marketflow-cf7f1). Override with VITE_FIREBASE_* in `.env`. */
@@ -46,19 +52,48 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   );
 }
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 
-// Long-polling fallback helps when WebChannel traffic is blocked (VPNs/proxies). HMR may init twice — fall back to getFirestore.
-function createDb() {
-  try {
-    return initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
-    });
-  } catch {
-    return getFirestore(app);
+/**
+ * Firestore stability (random INTERNAL ASSERTION b815 / WatchChangeAggregator on any page):
+ * - One Firestore instance per tab, stored on globalThis (Vite HMR + lazy chunks used to create split clients).
+ * - memoryLocalCache() always: avoids IndexedDB + watch target state getting out of sync.
+ * - experimentalAutoDetectLongPolling off unless VITE_FIRESTORE_USE_LONG_POLLING=true (proxy-only).
+ */
+function firestoreSingletonKey(): string {
+  return `__marketflow_firestore_${firebaseConfig.projectId}__`;
+}
+
+function createDb(): Firestore {
+  if (typeof globalThis !== "undefined") {
+    const cached = (globalThis as Record<string, unknown>)[firestoreSingletonKey()];
+    if (cached) return cached as Firestore;
   }
+
+  const useLongPolling =
+    import.meta.env.VITE_FIRESTORE_USE_LONG_POLLING === "true" ||
+    import.meta.env.VITE_FIRESTORE_USE_LONG_POLLING === "1";
+
+  const settings: FirestoreSettings = {
+    localCache: memoryLocalCache(),
+    experimentalAutoDetectLongPolling: useLongPolling,
+    experimentalForceLongPolling: false,
+  };
+
+  let firestore: Firestore;
+  try {
+    firestore = initializeFirestore(app, settings);
+  } catch {
+    firestore = getFirestore(app);
+  }
+
+  if (typeof globalThis !== "undefined") {
+    (globalThis as Record<string, unknown>)[firestoreSingletonKey()] = firestore;
+  }
+
+  return firestore;
 }
 
 export const db = createDb();

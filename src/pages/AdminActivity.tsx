@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { UserPlus, FileText, RefreshCw, CheckSquare, DollarSign, Layers, UserCheck, Search, Filter, Download, Calendar } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { adminClientPath } from '@/lib/routes';
-import { collection, onSnapshot, getDocs, collectionGroup, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs, collectionGroup, query, orderBy, where, limit } from 'firebase/firestore';
 
 interface Client {
   id: string;
@@ -90,7 +90,7 @@ export default function AdminActivity() {
     });
     // Load activities from dedicated collection
     const unsub2 = onSnapshot(
-      query(collection(db, 'activities'), orderBy('ts', 'desc')),
+      query(collection(db, 'activities'), orderBy('ts', 'desc'), limit(500)),
       snap => {
         const items = snap.docs.map(d => {
           const data = d.data();

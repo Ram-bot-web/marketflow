@@ -101,7 +101,10 @@ service cloud.firestore {
     }
 
     match /admins/{adminId} {
+      // Allow get on own admins/{uid} even when the doc is missing (login checks existence).
+      // Otherwise getDoc fails with permission-denied and auth looks "broken" despite 200 from Identity Toolkit.
       allow read: if isAuthenticated() && (
+        request.auth.uid == adminId ||
         (resource.data.keys().hasAll(['email']) && resource.data.email == request.auth.token.email) ||
         isAdmin()
       );

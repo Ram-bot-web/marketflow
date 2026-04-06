@@ -67,6 +67,11 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
               <CardDescription>
                 An unexpected error occurred. Please try refreshing the page.
+                {this.state.error?.message?.includes('INTERNAL ASSERTION') && (
+                  <span className="block mt-2 text-muted-foreground">
+                    Firestore client got into a bad state — use <strong>Refresh Page</strong> (Try Again alone may not fix it).
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
