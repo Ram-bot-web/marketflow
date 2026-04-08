@@ -30,8 +30,6 @@ import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { useTheme } from "@/components/theme/theme-provider";
 import { R } from "@/lib/routes";
 
 interface NavItem {
@@ -109,7 +107,6 @@ function SidebarContent({ isAdmin, collapsed, setCollapsed, onLinkClick }: {
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { resolvedTheme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -212,20 +209,7 @@ function SidebarContent({ isAdmin, collapsed, setCollapsed, onLinkClick }: {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/20 dark:border-white/20 flex-shrink-0 space-y-2">
-        <div className="flex items-center gap-2">
-          {!collapsed && (
-            <div className="flex-1 flex items-center gap-2">
-              <ThemeToggle className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10" />
-              <span className="text-sm text-white/80">Theme</span>
-            </div>
-          )}
-          {collapsed && (
-            <div className="w-full flex justify-center">
-              <ThemeToggle className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10" />
-            </div>
-          )}
-        </div>
+      <div className="p-3 border-t border-white/20 dark:border-white/20 flex-shrink-0">
         <button
           onClick={() => {
             handleLogout();

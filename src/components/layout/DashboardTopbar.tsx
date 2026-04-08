@@ -113,7 +113,7 @@ export function DashboardTopbar({ isAdmin = false, onMenuClick }: DashboardTopba
                 <ThemeToggle />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Toggle theme (Ctrl+K)</p>
+                <p>Toggle light or dark mode</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
