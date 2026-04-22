@@ -15,7 +15,7 @@ import {
 import { Search, ChevronRight, TrendingUp, DollarSign, Target } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { adminClientPath } from '@/lib/routes';
-import { collection, onSnapshot, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, collectionGroup } from 'firebase/firestore';
 
 interface Client {
   id: string;
@@ -42,21 +42,22 @@ export default function AdminReports() {
   const [search,       setSearch]       = useState('');
 
   useEffect(() => {
-    // Load clients for name lookup
-    const unsub = onSnapshot(collection(db, 'clients'), snap => {
-      setClients(snap.docs.map(d => ({ id: d.id, ...d.data() } as Client)));
+    const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
+      setClients(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Client)));
     });
 
-    // Load all reports across all clients via collectionGroup
-    getDocs(collectionGroup(db, 'reports')).then(snap => {
-      const list: Report[] = snap.docs.map(d => {
+    const unsubReports = onSnapshot(collectionGroup(db, 'reports'), (snap) => {
+      const list: Report[] = snap.docs.map((d) => {
         const clientId = d.ref.parent.parent?.id ?? '';
         return { id: d.id, clientId, clientName: '', ...d.data() } as Report;
       });
       setReports(list);
     });
 
-    return () => unsub();
+    return () => {
+      unsubClients();
+      unsubReports();
+    };
   }, []);
 
   // Attach client names once both are loaded

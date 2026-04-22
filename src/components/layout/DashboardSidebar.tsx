@@ -17,6 +17,7 @@ import {
   CreditCard,
   Layers,
   Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ const clientNavItems: NavItem[] = [
   { title: 'Marketing Plan',  href: R.PLAN,      icon: FileText },
   { title: 'Results',         href: R.RESULTS,   icon: BarChart3 },
   { title: 'Tasks',           href: R.TASKS,     icon: CheckSquare },
+  { title: 'Messages',        href: R.MESSAGES,  icon: MessageSquare },
   { title: 'Invoices',        href: R.INVOICES,  icon: CreditCard },
   { title: 'Activity',       href: R.ACTIVITY_TIMELINE, icon: Activity },
   { title: 'Calendar',      href: R.CALENDAR,          icon: Calendar },

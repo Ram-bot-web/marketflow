@@ -17,6 +17,7 @@ export const R = {
   PROFILE: '/profile',
   NOTIFICATIONS: '/notifications',
   TASKS: '/tasks',
+  MESSAGES: '/messages',
   INVOICES: '/invoices',
   ACTIVITY_TIMELINE: '/activity-timeline',
   CALENDAR: '/calendar',

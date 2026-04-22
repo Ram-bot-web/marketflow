@@ -14,6 +14,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
+import {
+  getClientLifecyclePhase,
+  LIFECYCLE_CHART_COLORS,
+  LIFECYCLE_BADGE_CLASSES,
+  type ClientLifecyclePhase,
+} from '@/lib/client-lifecycle';
 import { collection, onSnapshot, getDocs, collectionGroup } from 'firebase/firestore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -35,24 +41,6 @@ const budgetMap: Record<string, number> = {
   starter: 1000, growth: 2500, scale: 5000, enterprise: 8000,
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  onboarding: '#f59e0b',
-  planning:   '#6366f1',
-  active:     '#22c55e',
-  paused:     '#94a3b8',
-  completed:  '#64748b',
-};
-
-function getStatus(c: Client) {
-  if (!c.onboardingCompleted) return 'onboarding';
-  switch (c.projectStatus) {
-    case 'Strategy': case 'Planning': return 'planning';
-    case 'Active':    return 'active';
-    case 'Paused':    return 'paused';
-    case 'Completed': return 'completed';
-    default:          return 'planning';
-  }
-}
 
 function buildMonthKeys(count: number) {
   const keys: string[] = [];
@@ -92,7 +80,7 @@ export default function AdminAnalytics() {
   const totalLeads      = reports.reduce((s, r) => s + (r.leads || 0), 0);
   const totalAdSpend    = reports.reduce((s, r) => s + (r.adSpend || 0), 0);
   const avgCPL          = totalLeads > 0 ? totalAdSpend / totalLeads : 0;
-  const activeClients   = clients.filter(c => getStatus(c) === 'active').length;
+  const activeClients   = clients.filter(c => getClientLifecyclePhase(c) === 'active').length;
 
   // Calculate months based on date range
   const getMonthKeys = () => {
@@ -169,10 +157,14 @@ export default function AdminAnalytics() {
   // ── Status breakdown ────────────────────────────────────────────────────
   const statusBreakdown = useMemo(() => {
     const counts: Record<string, number> = { onboarding: 0, planning: 0, active: 0, paused: 0, completed: 0 };
-    clients.forEach(c => counts[getStatus(c)]++);
+    clients.forEach(c => counts[getClientLifecyclePhase(c)]++);
     return Object.entries(counts)
       .filter(([, v]) => v > 0)
-      .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value, color: STATUS_COLORS[name] }));
+      .map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value,
+        color: LIFECYCLE_CHART_COLORS[name as ClientLifecyclePhase],
+      }));
   }, [clients]);
 
   const kpis = [
@@ -190,12 +182,12 @@ export default function AdminAnalytics() {
   }, [clients]);
 
   const retentionRate = useMemo(() => {
-    const active = clients.filter(c => getStatus(c) === 'active').length;
+    const active = clients.filter(c => getClientLifecyclePhase(c) === 'active').length;
     return clients.length > 0 ? (active / clients.length) * 100 : 0;
   }, [clients]);
 
   const churnRate = useMemo(() => {
-    const paused = clients.filter(c => getStatus(c) === 'paused').length;
+    const paused = clients.filter(c => getClientLifecyclePhase(c) === 'paused').length;
     return clients.length > 0 ? (paused / clients.length) * 100 : 0;
   }, [clients]);
 
@@ -220,7 +212,7 @@ export default function AdminAnalytics() {
 
     // Group clients by status
     clients.forEach(client => {
-      const status = getStatus(client);
+      const status = getClientLifecyclePhase(client);
       if (byStatus[status]) {
         byStatus[status].clients.push(client);
         byStatus[status].totalRevenue += budgetMap[client.budget ?? ''] || 0;
@@ -331,7 +323,7 @@ export default function AdminAnalytics() {
     }
 
     // Calculate churn risk (percentage of paused + low engagement clients)
-    const pausedClients = clients.filter(c => getStatus(c) === 'paused').length;
+    const pausedClients = clients.filter(c => getClientLifecyclePhase(c) === 'paused').length;
     const atRiskCount = pausedClients;
     const churnRisk = clients.length > 0 ? (atRiskCount / clients.length) * 100 : 0;
 
@@ -544,7 +536,7 @@ export default function AdminAnalytics() {
                       <div key={status} className="p-3 border border-border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Badge className={STATUS_COLORS[status] ? '' : 'bg-muted'}>
+                            <Badge className={LIFECYCLE_BADGE_CLASSES[status as ClientLifecyclePhase] ?? 'bg-muted'}>
                               {status.charAt(0).toUpperCase() + status.slice(1)}
                             </Badge>
                             <span className="text-xs text-muted-foreground">

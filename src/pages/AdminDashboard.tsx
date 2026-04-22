@@ -43,6 +43,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { calculateHealthScore, getHealthScoreColor } from '@/lib/client-health';
+import {
+  getClientLifecyclePhase,
+  LIFECYCLE_BADGE_CLASSES,
+  type ClientLifecyclePhase,
+} from '@/lib/client-lifecycle';
 import { adminClientPath } from '@/lib/routes';
 
 interface Client {
@@ -57,32 +62,12 @@ interface Client {
   updatedAt?: { seconds: number } | null;
 }
 
-const statusColors: Record<string, string> = {
-  onboarding: 'bg-warning/10 text-warning',
-  planning:   'bg-primary/10 text-primary',
-  active:     'bg-success/10 text-success',
-  paused:     'bg-muted text-muted-foreground',
-  completed:  'bg-secondary text-secondary-foreground',
-};
-
 const budgetMap: Record<string, number> = {
   starter:    1000,
   growth:     2500,
   scale:      5000,
   enterprise: 8000,
 };
-
-function getClientStatus(client: Client): string {
-  if (!client.onboardingCompleted) return 'onboarding';
-  switch (client.projectStatus) {
-    case 'Strategy':
-    case 'Planning':  return 'planning';
-    case 'Active':    return 'active';
-    case 'Paused':    return 'paused';
-    case 'Completed': return 'completed';
-    default:          return 'planning';
-  }
-}
 
 function buildChartData(clients: Client[]) {
   const map: Record<string, { month: string; revenue: number; count: number }> = {};
@@ -150,7 +135,7 @@ export default function AdminDashboard() {
     // Status filter
     if (filterStatuses.length > 0) {
       filtered = filtered.filter(c => {
-        const status = getClientStatus(c);
+        const status = getClientLifecyclePhase(c);
         return filterStatuses.includes(status);
       });
     }
@@ -265,7 +250,7 @@ export default function AdminDashboard() {
         c.name || '',
         c.email,
         c.businessName,
-        getClientStatus(c),
+        getClientLifecyclePhase(c),
         c.budget || '',
         c.industry || '',
         (c.tags || []).join(';')
@@ -344,16 +329,16 @@ export default function AdminDashboard() {
   );
   
   const activeCampaigns = useMemo(
-    () => clients.filter(c => getClientStatus(c) === 'active').length,
+    () => clients.filter(c => getClientLifecyclePhase(c) === 'active').length,
     [clients]
   );
 
   const statusCounts = useMemo(() => ({
-    onboarding: clients.filter(c => getClientStatus(c) === 'onboarding').length,
-    planning:   clients.filter(c => getClientStatus(c) === 'planning').length,
-    active:     clients.filter(c => getClientStatus(c) === 'active').length,
-    paused:     clients.filter(c => getClientStatus(c) === 'paused').length,
-    completed:  clients.filter(c => getClientStatus(c) === 'completed').length,
+    onboarding: clients.filter(c => getClientLifecyclePhase(c) === 'onboarding').length,
+    planning:   clients.filter(c => getClientLifecyclePhase(c) === 'planning').length,
+    active:     clients.filter(c => getClientLifecyclePhase(c) === 'active').length,
+    paused:     clients.filter(c => getClientLifecyclePhase(c) === 'paused').length,
+    completed:  clients.filter(c => getClientLifecyclePhase(c) === 'completed').length,
   }), [clients]);
 
   const recentClients = useMemo(() =>
@@ -462,7 +447,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground text-center py-4">No clients yet.</p>
               )}
               {recentClients.map(client => {
-                const status = getClientStatus(client);
+                const status = getClientLifecyclePhase(client);
                 const label  = client.businessName || client.email;
                 return (
                   <Link
@@ -474,7 +459,7 @@ export default function AdminDashboard() {
                       <p className="text-sm font-medium truncate">{label}</p>
                       <p className="text-xs text-muted-foreground truncate">{client.email}</p>
                     </div>
-                    <Badge className={`ml-2 text-xs flex-shrink-0 ${statusColors[status]}`}>
+                    <Badge className={`ml-2 text-xs flex-shrink-0 ${LIFECYCLE_BADGE_CLASSES[status as ClientLifecyclePhase]}`}>
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                     </Badge>
                   </Link>
@@ -669,7 +654,7 @@ export default function AdminDashboard() {
 
               <TableBody>
                 {filteredClients.map((client) => {
-                  const status = getClientStatus(client);
+                  const status = getClientLifecyclePhase(client);
                   const isSelected = selectedClients.has(client.id);
                   const lastActive = client.updatedAt?.seconds 
                     ? new Date(client.updatedAt.seconds * 1000)
@@ -702,7 +687,7 @@ export default function AdminDashboard() {
                       </TableCell>
                       <TableCell>{client.businessName}</TableCell>
                       <TableCell>
-                        <Badge className={statusColors[status]}>
+                        <Badge className={LIFECYCLE_BADGE_CLASSES[status as ClientLifecyclePhase]}>
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </Badge>
                       </TableCell>

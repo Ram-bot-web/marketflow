@@ -26,6 +26,11 @@ import {
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activityLogger';
+import {
+  getClientLifecyclePhase,
+  LIFECYCLE_PHASE_TO_CLIENT_DOC,
+  type ClientLifecyclePhase,
+} from '@/lib/client-lifecycle';
 import { R } from '@/lib/routes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -93,25 +98,6 @@ const statusOptions = [
   { value: 'completed',  label: 'Completed'   },
 ];
 
-const statusToDoc: Record<string, { projectStatus: string; onboardingCompleted: boolean }> = {
-  onboarding: { projectStatus: 'Strategy',  onboardingCompleted: false },
-  planning:   { projectStatus: 'Planning',  onboardingCompleted: true  },
-  active:     { projectStatus: 'Active',    onboardingCompleted: true  },
-  paused:     { projectStatus: 'Paused',    onboardingCompleted: true  },
-  completed:  { projectStatus: 'Completed', onboardingCompleted: true  },
-};
-
-function getDisplayStatus(data: ClientData): string {
-  if (!data.onboardingCompleted) return 'onboarding';
-  switch (data.projectStatus) {
-    case 'Strategy':
-    case 'Planning':  return 'planning';
-    case 'Active':    return 'active';
-    case 'Paused':    return 'paused';
-    case 'Completed': return 'completed';
-    default:          return 'planning';
-  }
-}
 
 function formatTs(ts?: { seconds: number }) {
   if (!ts?.seconds) return '—';
@@ -161,7 +147,7 @@ export default function AdminClientDetail() {
 
         const data = clientSnap.data() as ClientData;
         setClientData(data);
-        setStatus(getDisplayStatus(data));
+        setStatus(getClientLifecyclePhase(data));
 
         const name =
           (data as { name?: string }).name ||
@@ -197,7 +183,7 @@ export default function AdminClientDetail() {
     if (!id) return;
     setSavingStatus(true);
     try {
-      const mapping = statusToDoc[newStatus];
+      const mapping = LIFECYCLE_PHASE_TO_CLIENT_DOC[newStatus as ClientLifecyclePhase];
       await updateDoc(doc(db, 'clients', id), {
         projectStatus:       mapping.projectStatus,
         onboardingCompleted: mapping.onboardingCompleted,

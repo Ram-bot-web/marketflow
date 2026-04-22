@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import RequireClientOnboarding from "@/components/auth/RequireClientOnboarding";
 import AdminRoute from "@/components/auth/AdminRoute";
 import { R } from "@/lib/routes";
 
@@ -44,6 +45,7 @@ const AdminOnboarding = lazy(() => import("./pages/AdminOnboarding"));
 const AdminClientDetail = lazy(() => import("./pages/AdminClientDetail"));
 const AdminManage = lazy(() => import("./pages/AdminManage"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Messages = lazy(() => import("./pages/Messages"));
 const AdminSetup = lazy(() => import("./pages/AdminSetup"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -85,7 +87,9 @@ const App = () => {
                   path={R.DASHBOARD}
                   element={
                     <ProtectedRoute>
-                      <Dashboard />
+                      <RequireClientOnboarding>
+                        <Dashboard />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -101,7 +105,9 @@ const App = () => {
                   path={R.PLAN}
                   element={
                     <ProtectedRoute>
-                      <Plan />
+                      <RequireClientOnboarding>
+                        <Plan />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -109,7 +115,9 @@ const App = () => {
                   path={R.RESULTS}
                   element={
                     <ProtectedRoute>
-                      <Results />
+                      <RequireClientOnboarding>
+                        <Results />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -125,7 +133,9 @@ const App = () => {
                   path={R.NOTIFICATIONS}
                   element={
                     <ProtectedRoute>
-                      <Notifications />
+                      <RequireClientOnboarding>
+                        <Notifications />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -133,7 +143,19 @@ const App = () => {
                   path={R.TASKS}
                   element={
                     <ProtectedRoute>
-                      <ClientTasks />
+                      <RequireClientOnboarding>
+                        <ClientTasks />
+                      </RequireClientOnboarding>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path={R.MESSAGES}
+                  element={
+                    <ProtectedRoute>
+                      <RequireClientOnboarding>
+                        <Messages />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -141,7 +163,9 @@ const App = () => {
                   path={R.INVOICES}
                   element={
                     <ProtectedRoute>
-                      <Invoices />
+                      <RequireClientOnboarding>
+                        <Invoices />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -149,7 +173,9 @@ const App = () => {
                   path={R.ACTIVITY_TIMELINE}
                   element={
                     <ProtectedRoute>
-                      <ActivityTimeline />
+                      <RequireClientOnboarding>
+                        <ActivityTimeline />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />
@@ -157,7 +183,9 @@ const App = () => {
                   path={R.CALENDAR}
                   element={
                     <ProtectedRoute>
-                      <Calendar />
+                      <RequireClientOnboarding>
+                        <Calendar />
+                      </RequireClientOnboarding>
                     </ProtectedRoute>
                   }
                 />

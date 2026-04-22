@@ -20,6 +20,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { R } from '@/lib/routes';
+import { isClientActivityHighlightType } from '@/lib/client-activity-highlights';
 
 // 🔥 Firebase
 import { auth, db } from '@/lib/firebase';
@@ -51,12 +52,15 @@ export function DashboardTopbar({ isAdmin = false, onMenuClick }: DashboardTopba
           orderBy('ts', 'desc')
         ),
         (snap) => {
-          // Count recent activities (last 7 days) as notifications
           const now = Date.now();
-          const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-          const recentCount = snap.docs.filter(doc => {
-            const data = doc.data();
-            return data.ts && data.ts > sevenDaysAgo;
+          const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+          const recentCount = snap.docs.filter((d) => {
+            const data = d.data();
+            return (
+              data.ts &&
+              data.ts > sevenDaysAgo &&
+              isClientActivityHighlightType(data.type)
+            );
           }).length;
           setNotificationCount(recentCount > 0 ? Math.min(recentCount, 99) : 0);
         },
@@ -96,8 +100,13 @@ export function DashboardTopbar({ isAdmin = false, onMenuClick }: DashboardTopba
         <div className="relative flex-1 max-w-md hidden sm:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder={
+              isAdmin
+                ? 'Search clients, pages…'
+                : 'Search this app (use sidebar for pages)…'
+            }
             className="pl-10 bg-secondary/50 border-0 focus-visible:ring-1"
+            aria-label={isAdmin ? 'Search' : 'Search'}
           />
         </div>
 
@@ -126,7 +135,11 @@ export function DashboardTopbar({ isAdmin = false, onMenuClick }: DashboardTopba
                   size="icon" 
                   className="relative"
                   onClick={() => navigate(isAdmin ? R.ADMIN_ACTIVITY : R.NOTIFICATIONS)}
-                  aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount} new)` : ''}`}
+                  aria-label={
+                    isAdmin
+                      ? `Activity${notificationCount > 0 ? ` (${notificationCount} recent)` : ''}`
+                      : `Recent updates${notificationCount > 0 ? ` (${notificationCount} in last 7 days)` : ''}`
+                  }
                 >
                   <Bell className="h-5 w-5" />
                   {notificationCount > 0 && (
@@ -140,7 +153,11 @@ export function DashboardTopbar({ isAdmin = false, onMenuClick }: DashboardTopba
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Notifications {notificationCount > 0 && `(${notificationCount} new)`}</p>
+                <p>
+                  {isAdmin
+                    ? `Open activity${notificationCount > 0 ? ` (${notificationCount} recent items)` : ''}`
+                    : `Open notifications${notificationCount > 0 ? ` — ${notificationCount} notable updates in the last 7 days` : ''}`}
+                </p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
